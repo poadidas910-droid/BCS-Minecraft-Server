@@ -936,8 +936,11 @@ updateScene();
   if (beeReduceMotion) return;
   const getSize = () => {
     const vw = window.innerWidth;
+    const vh = window.innerHeight;
     if (vw <= 560) return 150;
-    return Math.min(vw * 0.4, 600);
+    const sizeFromWidth = Math.min(vw * 0.4, 600);
+    const sizeFromHeight = Math.min(vh * 0.533, 800);
+    return Math.min(sizeFromWidth, sizeFromHeight);
   };
   let SIZE = getSize();
   const H_SPEED = 34;
@@ -1050,10 +1053,11 @@ updateScene();
     lastTime = now;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const currentSize = window.innerWidth <= 560 ? 71 : SIZE;
+    const currentSize = SIZE;
     const xOffset = getXOffset();
     const maxX = vw - currentSize - xOffset;
     const maxY = vh - currentSize - Y_OFFSET;
+    const buffer = 2;
     const smoothing = 1 - Math.exp(-dt / 0.45);
     vx += (targetVx - vx) * smoothing;
     vy += (targetVy - vy) * smoothing;
@@ -1061,15 +1065,20 @@ updateScene();
     const mult = boostActive ? 10 : 1;
     x += vx * mult * dt;
     y += vy * mult * dt;
-    if (x <= 0){ x = 0; if (hDir < 0) { startNewCluster(); hClusterDir = 1; hLegsInCluster = 0; startHorizontalLeg(1, now); } }
-    else if (x >= maxX){ x = maxX; if (hDir > 0) { startNewCluster(); hClusterDir = -1; hLegsInCluster = 0; startHorizontalLeg(-1, now); } }
-    if (y <= 0){
-      y = 0;
+    if (x <= buffer){ x = buffer; vx = 0; if (hDir < 0) { startNewCluster(); hClusterDir = 1; hLegsInCluster = 0; startHorizontalLeg(1, now); } }
+    else if (x >= maxX - buffer){ x = maxX - buffer; vx = 0; if (hDir > 0) { startNewCluster(); hClusterDir = -1; hLegsInCluster = 0; startHorizontalLeg(-1, now); } }
+    if (y <= buffer){
+      y = buffer;
+      vy = 0;
       if (vDir < 0){ vDir = 1; targetVy = vDir * vSpeed; vSegEndTime = now + (0.9 + Math.random() * 1.3) * 1000; }
-    } else if (y >= maxY){
-      y = maxY;
+    } else if (y >= maxY - buffer){
+      y = maxY - buffer;
+      vy = 0;
       if (vDir > 0){ vDir = -1; targetVy = vDir * vSpeed; vSegEndTime = now + (0.9 + Math.random() * 1.3) * 1000; }
     }
+    // Extra safety: hard clamp if somehow still out of bounds
+    x = Math.max(buffer, Math.min(x, Math.max(maxX - buffer, buffer)));
+    y = Math.max(buffer, Math.min(y, Math.max(maxY - buffer, buffer)));
     if (now >= hLegEndTime){
       hLegsInCluster++;
       if (hLegsInCluster >= hClusterSize){
@@ -1103,10 +1112,22 @@ updateScene();
     if (!spawned) return;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const xOffset = getXOffset();
     SIZE = getSize();
-    const currentSize = SIZE;
-    x = Math.min(x, vw - currentSize);
-    y = Math.min(y, vh - currentSize);
+    const maxX = Math.max(0, vw - SIZE - xOffset);
+    const maxY = Math.max(0, vh - SIZE - Y_OFFSET);
+    
+    // Hard clamp to ensure bee stays in bounds
+    x = Math.max(0, Math.min(x, maxX));
+    y = Math.max(0, Math.min(y, maxY));
+    
+    // If screen is too small and bee doesn't fit, reset to 0,0
+    if (maxX <= 0 || maxY <= 0) {
+      x = 0;
+      y = 0;
+    }
+    
+    placeBee();
   });
   function updateBeeVisibility(){
     const discordSection = document.getElementById("discord");
