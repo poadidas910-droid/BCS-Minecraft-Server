@@ -922,8 +922,9 @@ function onScroll(){
     ticking = true;
   }
 }
-window.addEventListener("scroll", onScroll, { passive: true });
+window.addEventListener("scroll", onScroll);
 window.addEventListener("resize", onScroll);
+window.addEventListener("touchmove", onScroll, { passive: true });
 updateScene();
 /* ===================================================================== BEE ===================================================================== */
 (function(){
